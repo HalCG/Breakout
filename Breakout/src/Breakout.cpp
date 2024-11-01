@@ -1,7 +1,7 @@
 ﻿#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "game.h"
+#include "game.h"//game里面有包含<GLFW/glfw3.h>  但是没有提前包含<glad/glad.h>，导致glad头文件包含问题
 #include "ResourceManager.h"
 
 #include <iostream>
