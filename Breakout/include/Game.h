@@ -1,6 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "GameLevel.h"
+
 // 代表了游戏的当前状态
 enum GameState {
     GAME_ACTIVE,
@@ -19,6 +21,9 @@ public:
     bool  Keys[1024];
     bool  KeysProcessed[1024];
     unsigned int     Width, Height;
+
+    std::vector<GameLevel> Levels;
+    unsigned int           Level;
 
     // 初始化游戏状态（加载所有的着色器/纹理/关卡）
     void Init();

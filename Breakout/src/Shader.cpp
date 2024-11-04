@@ -57,7 +57,7 @@ void Shader::SetInteger(const char* name, GLint value, bool useShader)
     if (useShader)
         this->Use();
 
-    std::cout << glGetUniformLocation(this->ID, name) << std::endl;
+    //std::cout << glGetUniformLocation(this->ID, name) << std::endl;
     glUniform1i(glGetUniformLocation(this->ID, name), value);
 }
 void Shader::SetVector2f(const char* name, float x, float y, bool useShader)
