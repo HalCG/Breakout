@@ -43,6 +43,7 @@ public:
     void ProcessInput(float dt);
     void Update(float dt);
     void Render();
+    void DoCollisions();
 };
 
 #endif
