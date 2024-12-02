@@ -2,6 +2,16 @@
 #define GAME_H
 
 #include "GameLevel.h"
+#include "BallObject.h"
+
+// 指定玩家的尺寸，宽度为100个单位，高度为20个单位。
+const glm::vec2 PLAYER_SIZE(100.0f, 20.0f);
+// 定义了玩家移动的速度，设置为每秒500个单位
+const float PLAYER_VELOCITY(500.0f);
+// 个向量表示球的初始速度和方向，水平速度为100个单位，垂直速度为-350个单位（在许多图形上下文中，y轴是反向的，所以这个值表示向上移动）。
+const glm::vec2 INITIAL_BALL_VELOCITY(100.0f, -350.0f);
+// 定义了球的大小，半径为12.5个单位。
+const float BALL_RADIUS = 12.5f;
 
 // 代表了游戏的当前状态
 enum GameState {
@@ -17,6 +27,7 @@ public:
     ~Game();
 
     // 游戏状态
+    //BallObject* Ball;
     GameState  State;
     bool  Keys[1024];
     bool  KeysProcessed[1024];
