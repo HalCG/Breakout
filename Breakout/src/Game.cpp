@@ -168,18 +168,99 @@ bool CheckCollision_round(BallObject& one, GameObject& two) // AABB - Circle col
     return glm::length(difference) < one.Radius;
 }
 
+
+enum Direction {
+    UP,
+    RIGHT,
+    DOWN,
+    LEFT
+};
+
+Direction VectorDirection(glm::vec2 target)
+{
+    glm::vec2 compass[] = {
+        glm::vec2(0.0f, 1.0f),	// up
+        glm::vec2(1.0f, 0.0f),	// right
+        glm::vec2(0.0f, -1.0f),	// down
+        glm::vec2(-1.0f, 0.0f)	// left
+    };
+    float max = 0.0f;
+    unsigned int best_match = -1;
+    for (unsigned int i = 0; i < 4; i++)
+    {
+        float dot_product = glm::dot(glm::normalize(target), compass[i]);
+        if (dot_product > max)
+        {
+            max = dot_product;
+            best_match = i;
+        }
+    }
+    return (Direction)best_match;
+}
+
+typedef std::tuple<bool, Direction, glm::vec2> Collision;
+
+Collision CheckCollision_round2(BallObject& one, GameObject& two) // AABB - Circle collision
+{
+    // 获取球圆心
+    glm::vec2 center(one.Position + one.Radius);
+    // 计算GameObject 中心
+    glm::vec2 aabb_half_extents(two.Size.x / 2.0f, two.Size.y / 2.0f);
+    glm::vec2 aabb_center(
+        two.Position.x + aabb_half_extents.x,
+        two.Position.y + aabb_half_extents.y
+    );
+    // 获取两向量中心差
+    glm::vec2 difference = center - aabb_center;//可以理解为两个中心的连线
+    //找到方框中心与经过边框的向量
+    glm::vec2 clamped = glm::clamp(difference, -aabb_half_extents, aabb_half_extents);//约定范围-aabb_half_extents, aabb_half_extents
+    // 获取邻近点的位置
+    glm::vec2 closest = aabb_center + clamped;
+    // 获取点位置与圆球中心距离
+    difference = closest - center;
+
+    if (glm::length(difference) <= one.Radius)
+        return std::make_tuple(true, VectorDirection(difference), difference);
+    else
+        return std::make_tuple(false, UP, glm::vec2(0.0f, 0.0f));
+}
+
 void Game::DoCollisions()
 {
     for (GameObject& box : this->Levels[this->Level].Bricks)
     {
         if (!box.Destroyed)
         {
-            if (CheckCollision_round(*Ball, box))
+            Collision collision = CheckCollision_round2(*Ball, box);
+            if (std::get<0>(collision)) // if collision is true
             {
+                // destroy block if not solid
                 if (!box.IsSolid)
                     box.Destroyed = true;
+                // collision resolution
+                Direction dir = std::get<1>(collision);
+                glm::vec2 diff_vector = std::get<2>(collision);
+                if (dir == LEFT || dir == RIGHT) // horizontal collision
+                {
+                    Ball->Velocity.x = -Ball->Velocity.x; // reverse horizontal velocity
+                    // relocate
+                    float penetration = Ball->Radius - std::abs(diff_vector.x);
+                    if (dir == LEFT)
+                        Ball->Position.x += penetration; // move ball to right
+                    else
+                        Ball->Position.x -= penetration; // move ball to left;
+                }
+                else // vertical collision
+                {
+                    Ball->Velocity.y = -Ball->Velocity.y; // reverse vertical velocity
+                    // relocate
+                    float penetration = Ball->Radius - std::abs(diff_vector.y);
+                    if (dir == UP)
+                        Ball->Position.y -= penetration; // move ball back up
+                    else
+                        Ball->Position.y += penetration; // move ball back down
+                }
             }
         }
     }
 }
-
