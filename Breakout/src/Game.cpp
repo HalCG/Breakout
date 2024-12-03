@@ -3,11 +3,13 @@
 #include <GLFW/glfw3.h>
 #include <ResourceManager.h>
 #include <SpriteRenderer.h>
+#include <ParticleGenerator.h>
 
 
 BallObject* Ball;
 GameObject* Player;
 SpriteRenderer* Renderer;
+ParticleGenerator* Particles;
 
 Game::Game(unsigned int width, unsigned int height)
     : State(GAME_ACTIVE), Keys(), Width(width), Height(height)
@@ -24,6 +26,8 @@ void Game::Init()
 {
     // 着色器
     ResourceManager::LoadShader("shaders/sprite.vs", "shaders/sprite.fs", nullptr, "sprite");//frag->fs
+    ResourceManager::LoadShader("shaders/particle.vs", "shaders/particle.fs", nullptr, "particle");
+    
     // configure shaders
     glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(this->Width),
         static_cast<float>(this->Height), 0.0f, -1.0f, 1.0f);
@@ -31,6 +35,10 @@ void Game::Init()
     Shader& spriteShader = ResourceManager::Shaders[("sprite")];
     spriteShader.Use().SetInteger("sprite", 0);
     spriteShader.SetMatrix4("projection", projection);
+
+    ResourceManager::GetShader("particle").Use();//use 后  shader 设置才能生效
+    //ResourceManager::GetShader("particle").SetInteger("image", 0);
+    ResourceManager::GetShader("particle").SetMatrix4("projection", projection);
 
     // 渲染精灵
     Renderer = new SpriteRenderer(spriteShader);
@@ -41,6 +49,7 @@ void Game::Init()
     ResourceManager::LoadTexture("textures/block.png", false, "block");
     ResourceManager::LoadTexture("textures/block_solid.png", false, "block_solid");
     ResourceManager::LoadTexture("textures/paddle.png", true, "paddle");
+    ResourceManager::LoadTexture("textures/particle.png", true, "particle");
 
     // 关卡
     GameLevel one; one.Load("levels/one.lvl", this->Width, this->Height / 2);
@@ -65,11 +74,22 @@ void Game::Init()
         -BALL_RADIUS * 2.0f);
     Ball = new BallObject(ballPos, BALL_RADIUS, INITIAL_BALL_VELOCITY,
         ResourceManager::GetTexture("face"));
+
+    //方形粒子效果
+    Particles = new ParticleGenerator(
+        ResourceManager::GetShader("particle"),
+        ResourceManager::GetTexture("particle"),
+        500
+    );
 }
 
+//更新GameObject 位置、生命状态、运行速度、颜色等
 void Game::Update(float dt)
 {
     Ball->Move(dt, this->Width);
+
+    // update particles
+    Particles->Update(dt, *Ball, 2, glm::vec2(Ball->Radius / 2.0f));
 }
 
 
@@ -121,7 +141,8 @@ void Game::Render()
 
     //draw player
     Player->Draw(*Renderer);
-
+    // draw particles	
+    Particles->Draw();//在渲染球之前渲染粒子。这样，粒子最终会渲染在所有其他对象的前面，但在球的后面
     //draw ball
     Ball->Draw(*Renderer);
 
