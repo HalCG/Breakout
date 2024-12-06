@@ -3,6 +3,7 @@
 
 #include "GameLevel.h"
 #include "BallObject.h"
+#include "PowerUp.h"
 
 // 指定玩家的尺寸，宽度为100个单位，高度为20个单位。
 const glm::vec2 PLAYER_SIZE(100.0f, 20.0f);
@@ -35,6 +36,10 @@ public:
 
     std::vector<GameLevel> Levels;
     unsigned int           Level;
+
+    std::vector<PowerUp>  PowerUps;
+    void SpawnPowerUps(GameObject& block);
+    void UpdatePowerUps(float dt);
 
     // 初始化游戏状态（加载所有的着色器/纹理/关卡）
     void Init();
