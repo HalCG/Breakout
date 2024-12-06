@@ -4,12 +4,15 @@
 #include <ResourceManager.h>
 #include <SpriteRenderer.h>
 #include <ParticleGenerator.h>
+#include <PostProcesser.h>
 
 
 BallObject* Ball;
 GameObject* Player;
 SpriteRenderer* Renderer;
 ParticleGenerator* Particles;
+PostProcessor* Effects;
+float ShakeTime = 0.0f;
 
 Game::Game(unsigned int width, unsigned int height)
     : State(GAME_ACTIVE), Keys(), Width(width), Height(height)
@@ -27,7 +30,8 @@ void Game::Init()
     // 着色器
     ResourceManager::LoadShader("shaders/sprite.vs", "shaders/sprite.fs", nullptr, "sprite");//frag->fs
     ResourceManager::LoadShader("shaders/particle.vs", "shaders/particle.fs", nullptr, "particle");
-    
+    ResourceManager::LoadShader("shaders/post_processing.vs", "shaders/post_processing.fs", nullptr, "postprocessing");
+
     // configure shaders
     glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(this->Width),
         static_cast<float>(this->Height), 0.0f, -1.0f, 1.0f);
@@ -42,6 +46,7 @@ void Game::Init()
 
     // 渲染精灵
     Renderer = new SpriteRenderer(spriteShader);
+    Effects = new PostProcessor(ResourceManager::GetShader("postprocessing"), this->Width, this->Height);
 
     // 纹理
     ResourceManager::LoadTexture("textures/background.jpg", false, "background");
@@ -90,6 +95,14 @@ void Game::Update(float dt)
 
     // update particles
     Particles->Update(dt, *Ball, 2, glm::vec2(Ball->Radius / 2.0f));
+
+    //更新shakeTime值
+    if (ShakeTime > 0.0f)
+    {
+        ShakeTime -= dt;
+        if (ShakeTime <= 0.0f)
+            Effects->Shake = false;
+    }
 }
 
 
@@ -125,29 +138,34 @@ void Game::ProcessInput(float dt)
 void Game::Render()
 {
     //Texture2D faceTexture = ResourceManager::GetTexture("face");
-    //Renderer->DrawSprite(faceTexture,
-    //    glm::vec2(200.0f, 200.0f), glm::vec2(300.0f, 400.0f), 45.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+	//Renderer->DrawSprite(faceTexture,
+	//    glm::vec2(200.0f, 200.0f), glm::vec2(300.0f, 400.0f), 45.0f, glm::vec3(0.0f, 1.0f, 0.0f));
 
-    if (this->State == GAME_ACTIVE)
-    {
-        // draw background
-        Texture2D backgroundTexture = ResourceManager::GetTexture("background");
-        Renderer->DrawSprite(backgroundTexture,
-            glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height), 0.0f
-        );
-        // draw levels
-        this->Levels[this->Level].Draw(*Renderer);
-    }
+	if (this->State == GAME_ACTIVE)
+	{
+		Effects->BeginRender();
 
-    //draw player
-    Player->Draw(*Renderer);
-    // draw particles	
-    Particles->Draw();//在渲染球之前渲染粒子。这样，粒子最终会渲染在所有其他对象的前面，但在球的后面
-    //draw ball
-    Ball->Draw(*Renderer);
+		// draw background
+		Texture2D backgroundTexture = ResourceManager::GetTexture("background");
+		Renderer->DrawSprite(backgroundTexture,
+			glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height), 0.0f
+		);
+		// draw levels
+		this->Levels[this->Level].Draw(*Renderer);
 
-    //碰撞检测
-    this->DoCollisions();
+		//draw player
+		Player->Draw(*Renderer);
+		// draw particles	
+		Particles->Draw();//在渲染球之前渲染粒子。这样，粒子最终会渲染在所有其他对象的前面，但在球的后面
+		//draw ball
+		Ball->Draw(*Renderer);
+
+		Effects->EndRender();
+		Effects->Render(glfwGetTime());
+
+		//碰撞检测
+		this->DoCollisions();
+	}
 }
 
 //方形碰撞检测
@@ -251,37 +269,72 @@ void Game::DoCollisions()
     for (GameObject& box : this->Levels[this->Level].Bricks)
     {
         if (!box.Destroyed)
-        {
-            Collision collision = CheckCollision_round2(*Ball, box);
-            if (std::get<0>(collision)) // if collision is true
+		{
+			Collision collision = CheckCollision_round2(*Ball, box);
+            if (std::get<0>(collision)) // 是否碰撞
             {
-                // destroy block if not solid
+                // 非固体就销毁
                 if (!box.IsSolid)
-                    box.Destroyed = true;
-                // collision resolution
+					box.Destroyed = true;
+				else {
+					// if block is solid, enable shake effect
+					ShakeTime = 0.05f;
+					Effects->Shake = true;
+				}
+
+                // 碰撞结果
                 Direction dir = std::get<1>(collision);
                 glm::vec2 diff_vector = std::get<2>(collision);
-                if (dir == LEFT || dir == RIGHT) // horizontal collision
+
+                //横向 左右碰撞
+                if (dir == LEFT || dir == RIGHT)
                 {
-                    Ball->Velocity.x = -Ball->Velocity.x; // reverse horizontal velocity
+                    Ball->Velocity.x = -Ball->Velocity.x; // 翻转横向速度
                     // relocate
                     float penetration = Ball->Radius - std::abs(diff_vector.x);
                     if (dir == LEFT)
-                        Ball->Position.x += penetration; // move ball to right
+                        Ball->Position.x += penetration; // 球向右
                     else
-                        Ball->Position.x -= penetration; // move ball to left;
+                        Ball->Position.x -= penetration; // 球向左
                 }
-                else // vertical collision
+                //纵向 上下碰撞
+                else 
                 {
-                    Ball->Velocity.y = -Ball->Velocity.y; // reverse vertical velocity
+                    Ball->Velocity.y = -Ball->Velocity.y; // 翻转纵向速度
                     // relocate
                     float penetration = Ball->Radius - std::abs(diff_vector.y);
                     if (dir == UP)
-                        Ball->Position.y -= penetration; // move ball back up
+                        Ball->Position.y -= penetration; // 球向上
                     else
-                        Ball->Position.y += penetration; // move ball back down
+                        Ball->Position.y += penetration; // 球向下
                 }
             }
         }
+    }
+
+    // 代码检测球与玩家球拍之间是否发生碰撞：
+    Collision result = CheckCollision_round2(*Ball, *Player);
+    if (!Ball->Stuck && std::get<0>(result))
+    {
+        // 当检测到碰撞时，代码根据球击中球拍的位置来调整速度：
+        float centerBoard = Player->Position.x + Player->Size.x / 2.0f;
+        float distance = (Ball->Position.x + Ball->Radius) - centerBoard;
+        float percentage = distance / (Player->Size.x / 2.0f);
+
+        // 根据球拍的撞击来调整球的速度
+        float strength = 2.0f;
+        glm::vec2 oldVelocity = Ball->Velocity;
+        Ball->Velocity.x = INITIAL_BALL_VELOCITY.x * percentage * strength;
+
+        // 为了确保在更改 x 速度后球的总速度保持一致，做了归一化处理
+        Ball->Velocity = glm::normalize(Ball->Velocity) * glm::length(oldVelocity); // keep speed consistent over both axes (multiply by length of old velocity, so total strength is not changed)
+        // 调整 y 速度，以确保球在撞击球拍后向上反弹
+        //Ball->Velocity.y = -Ball->Velocity.y;
+        Ball->Velocity.y = -1.0f * abs(Ball->Velocity.y);//abs 强制向上
+
+        // 意味着当碰撞发生时，球将粘附于球拍，这样可能会改变玩法，使玩家能够控制球的释放
+        //Ball->Stuck = Ball->Sticky;
+        //暂时禁用音效
+        //SoundEngine->play2D(FileSystem::getPath("resources/audio/bleep.wav").c_str(), false);
     }
 }
