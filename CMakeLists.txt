@@ -15,6 +15,9 @@ project ("LearnOpenGL")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/modules/cmake/")
 find_package(GLFW3 REQUIRED)
 
+# 添加库搜索路径  
+link_directories(${CMAKE_SOURCE_DIR}/modules/irrKlang-64bit-1.6.0/lib/Winx64-visualStudio)
+
 # 添加自定义库 
 add_library(glad ${CMAKE_SOURCE_DIR}/modules/glad4.6/src/glad.c)
 add_library(stb_image ${CMAKE_SOURCE_DIR}/modules/stb_image/stb_image_wrap.cpp)
@@ -24,6 +27,7 @@ include_directories(${GLFW3_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/modules/glad4.6/include)
 include_directories(${CMAKE_SOURCE_DIR}/modules/stb_image)
 include_directories(${CMAKE_SOURCE_DIR}/modules/glm-1.0.1)
+include_directories(${CMAKE_SOURCE_DIR}/modules/irrKlang-64bit-1.6.0/include)
 
 # 包含子项目。
 add_subdirectory ("Breakout")

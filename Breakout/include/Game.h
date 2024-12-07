@@ -28,7 +28,6 @@ public:
     ~Game();
 
     // сно╥в╢л╛
-    //BallObject* Ball;
     GameState  State;
     bool  Keys[1024];
     bool  KeysProcessed[1024];

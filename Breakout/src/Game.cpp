@@ -5,7 +5,10 @@
 #include <SpriteRenderer.h>
 #include <ParticleGenerator.h>
 #include <PostProcesser.h>
+#include <irrKlang.h>
 
+using namespace irrklang;
+ISoundEngine* SoundEngine = createIrrKlangDevice();
 
 BallObject* Ball;
 GameObject* Player;
@@ -93,6 +96,9 @@ void Game::Init()
         ResourceManager::GetTexture("particle"),
         500
     );
+
+    // audio
+    SoundEngine->play2D("audio/breakout.mp3", true);
 }
 
 //更新GameObject 位置、生命状态、运行速度、颜色等
@@ -293,11 +299,13 @@ void Game::DoCollisions()
                 if (!box.IsSolid) {
                     box.Destroyed = true;
                     this->SpawnPowerUps(box);
+                    SoundEngine->play2D("audio/bleep.mp3", false);
                 }
 				else {
 					// if block is solid, enable shake effect
 					ShakeTime = 0.05f;
 					Effects->Shake = true;
+                    SoundEngine->play2D("audio/solid.wav", false);
 				}
 
                 // 碰撞结果
@@ -346,6 +354,7 @@ void Game::DoCollisions()
                 ActivatePowerUp(powerUp);
                 powerUp.Destroyed = true;
                 powerUp.Activated = true;
+                SoundEngine->play2D("audio/powerup.wav", false);
             }
         }
     }
@@ -372,8 +381,8 @@ void Game::DoCollisions()
 
         // 意味着当碰撞发生时，球将粘附于球拍，这样可能会改变玩法，使玩家能够控制球的释放
         Ball->Stuck = Ball->Sticky;
-        //暂时禁用音效
-        //SoundEngine->play2D(FileSystem::getPath("resources/audio/bleep.wav").c_str(), false);
+        
+        SoundEngine->play2D("audio/bleep.wav", false);
     }
 }
 
