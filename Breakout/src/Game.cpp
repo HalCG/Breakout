@@ -100,8 +100,14 @@ void Game::Update(float dt)
 {
     Ball->Move(dt, this->Width);
 
+    //Åö×²¼ì²â
+    this->DoCollisions();
+
     // update particles
     Particles->Update(dt, *Ball, 2, glm::vec2(Ball->Radius / 2.0f));
+
+    // update PowerUps
+    this->UpdatePowerUps(dt);
 
     //¸üÐÂshakeTimeÖµ
     if (ShakeTime > 0.0f)
@@ -173,8 +179,6 @@ void Game::Render()
 		Effects->EndRender();
 		Effects->Render(glfwGetTime());
 
-		//Åö×²¼ì²â
-		this->DoCollisions();
 	}
 }
 
@@ -480,16 +484,30 @@ bool ShouldSpawn(unsigned int chance)
 
 void Game::SpawnPowerUps(GameObject& block)
 {
-    if (ShouldSpawn(75)) // 1 in 75 chance
-        this->PowerUps.push_back(PowerUp("speed", glm::vec3(0.5f, 0.5f, 1.0f), 0.0f, block.Position, ResourceManager::GetTexture("powerup_speed")));
-    if (ShouldSpawn(75))
+	if (ShouldSpawn(75)) // 1 in 75 chance
+	{
+		this->PowerUps.push_back(PowerUp("speed", glm::vec3(0.5f, 0.5f, 1.0f), 0.0f, block.Position, ResourceManager::GetTexture("powerup_speed")));
+		return;
+	}
+    if (ShouldSpawn(75)) {
         this->PowerUps.push_back(PowerUp("sticky", glm::vec3(1.0f, 0.5f, 1.0f), 20.0f, block.Position, ResourceManager::GetTexture("powerup_sticky")));
-    if (ShouldSpawn(75))
+        return;
+    }
+    if (ShouldSpawn(75)) {
         this->PowerUps.push_back(PowerUp("pass-through", glm::vec3(0.5f, 1.0f, 0.5f), 10.0f, block.Position, ResourceManager::GetTexture("powerup_passthrough")));
-    if (ShouldSpawn(75))
+        return;
+    }
+    if (ShouldSpawn(75)) {
         this->PowerUps.push_back(PowerUp("pad-size-increase", glm::vec3(1.0f, 0.6f, 0.4), 0.0f, block.Position, ResourceManager::GetTexture("powerup_increase")));
+        return;
+    }
     if (ShouldSpawn(15)) // Negative powerups should spawn more often
+    {
         this->PowerUps.push_back(PowerUp("confuse", glm::vec3(1.0f, 0.3f, 0.3f), 15.0f, block.Position, ResourceManager::GetTexture("powerup_confuse")));
-    if (ShouldSpawn(15))
+        return;
+    }
+    if (ShouldSpawn(15)) {
         this->PowerUps.push_back(PowerUp("chaos", glm::vec3(0.9f, 0.25f, 0.25f), 15.0f, block.Position, ResourceManager::GetTexture("powerup_chaos")));
+        return;
+    }
 }
