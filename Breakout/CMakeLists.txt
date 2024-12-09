@@ -10,7 +10,7 @@ aux_source_directory(./src DIR_BASE_SRCS)
 add_executable(Breakout ${DIR_BASE_SRCS})
 
 # 链接库 
-target_link_libraries(Breakout ${GLFW3_LIBRARY} glad stb_image irrKlang)
+target_link_libraries(Breakout ${GLFW3_LIBRARY} glad stb_image irrKlang freetype)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Breakout PROPERTY CXX_STANDARD 20)

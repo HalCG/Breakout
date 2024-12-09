@@ -6,15 +6,20 @@
 #include <ParticleGenerator.h>
 #include <PostProcesser.h>
 #include <irrKlang.h>
+#include <TextRender.h>
+
+#include <sstream>
 
 using namespace irrklang;
 ISoundEngine* SoundEngine = createIrrKlangDevice();
 
-BallObject* Ball;
 GameObject* Player;
 SpriteRenderer* Renderer;
 ParticleGenerator* Particles;
 PostProcessor* Effects;
+BallObject* Ball;
+TextRenderer* Text;
+
 float ShakeTime = 0.0f;
 
 Game::Game(unsigned int width, unsigned int height)
@@ -99,6 +104,14 @@ void Game::Init()
 
     // audio
     SoundEngine->play2D("audio/breakout.mp3", true);
+
+    //文字渲染器
+    Text = new TextRenderer(this->Width, this->Height);
+    Text->Load("fonts/ocraext.TTF", 24);
+
+    //游戏初始状态及生命值
+    this->State = GAME_MENU;
+    this->Lives = 3;
 }
 
 //更新GameObject 位置、生命状态、运行速度、颜色等
@@ -122,6 +135,27 @@ void Game::Update(float dt)
         if (ShakeTime <= 0.0f)
             Effects->Shake = false;
     }
+
+    //重置小球位置
+    if (Ball->Position.y >= this->Height) // did ball reach bottom edge?
+    {
+        --this->Lives;
+        if (this->Lives == 0)
+        {
+            this->ResetLevel();
+            this->State = GAME_MENU;
+        }
+        this->ResetPlayer();
+    }
+
+    // 更新游戏整体状态
+    if (this->State == GAME_ACTIVE && this->Levels[this->Level].IsCompleted())
+    {
+        this->ResetLevel();
+        this->ResetPlayer();
+        Effects->Chaos = true;
+        this->State = GAME_WIN;
+    }
 }
 
 void Game::ProcessInput(float dt)
@@ -129,7 +163,7 @@ void Game::ProcessInput(float dt)
     if (this->State == GAME_ACTIVE)
     {
         float velocity = PLAYER_VELOCITY * dt;
-        // move playerboard
+        // 移动挡板：封信位置值
         if (this->Keys[GLFW_KEY_A])
         {
             if (Player->Position.x >= 0.0f)
@@ -147,19 +181,47 @@ void Game::ProcessInput(float dt)
                 if (Ball->Stuck)
                     Ball->Position.x += velocity;
             }
-        }
-        if (this->Keys[GLFW_KEY_SPACE])
-            Ball->Stuck = false;
+		}
+		if (this->Keys[GLFW_KEY_SPACE])
+			Ball->Stuck = false;
+	}
+
+	if (this->State == GAME_MENU)
+	{
+		if (this->Keys[GLFW_KEY_ENTER] && !this->KeysProcessed[GLFW_KEY_ENTER])
+		{
+			this->State = GAME_ACTIVE;
+			this->KeysProcessed[GLFW_KEY_ENTER] = true;
+		}
+		if (this->Keys[GLFW_KEY_W] && !this->KeysProcessed[GLFW_KEY_W])
+		{
+			this->Level = (this->Level + 1) % 4;
+			this->KeysProcessed[GLFW_KEY_W] = true;
+		}
+		if (this->Keys[GLFW_KEY_S] && !this->KeysProcessed[GLFW_KEY_S])
+		{
+			if (this->Level > 0)
+				--this->Level;
+			else
+				this->Level = 3;
+			this->KeysProcessed[GLFW_KEY_S] = true;
+		}
+	}
+
+	if (this->State == GAME_WIN)
+    {
+        Text->RenderText(
+            "You WON!!!", 320.0, Height / 2 - 20.0, 1.0, glm::vec3(0.0, 1.0, 0.0)
+        );
+        Text->RenderText(
+            "Press ENTER to retry or ESC to quit", 130.0, Height / 2, 1.0, glm::vec3(1.0, 1.0, 0.0)
+        );
     }
 }
 
 void Game::Render()
 {
-    //Texture2D faceTexture = ResourceManager::GetTexture("face");
-	//Renderer->DrawSprite(faceTexture,
-	//    glm::vec2(200.0f, 200.0f), glm::vec2(300.0f, 400.0f), 45.0f, glm::vec3(0.0f, 1.0f, 0.0f));
-
-	if (this->State == GAME_ACTIVE)
+    if (this->State == GAME_ACTIVE || this->State == GAME_MENU || this->State == GAME_WIN)
 	{
 		Effects->BeginRender();
 
@@ -185,7 +247,25 @@ void Game::Render()
 		Effects->EndRender();
 		Effects->Render(glfwGetTime());
 
+        std::stringstream ss; ss << this->Lives;
+        Text->RenderText("Lives:" + ss.str(), 5.0f, 5.0f, 1.0f);
 	}
+
+    if (this->State == GAME_MENU)
+    {
+        Text->RenderText("Press ENTER to start", 250.0f, Height / 2, 1.0f);
+        Text->RenderText("Press W or S to select level", 245.0f, Height / 2 + 20.0f, 0.75f);
+    }
+
+    if (this->State == GAME_WIN)
+    {
+        if (this->Keys[GLFW_KEY_ENTER])
+        {
+            this->KeysProcessed[GLFW_KEY_ENTER] = true;
+            Effects->Chaos = false;
+            this->State = GAME_MENU;
+        }
+    }
 }
 
 //方形碰撞检测
@@ -345,12 +425,13 @@ void Game::DoCollisions()
     {
         if (!powerUp.Destroyed)
         {
-            // first check if powerup passed bottom edge, if so: keep as inactive and destroy
+            // 非屏幕内的特效销毁处理
             if (powerUp.Position.y >= this->Height)
                 powerUp.Destroyed = true;
 
             if (CheckCollision_square(*Player, powerUp))
-            {	// collided with player, now activate powerup
+            {	
+                // 碰撞后激活特效
                 ActivatePowerUp(powerUp);
                 powerUp.Destroyed = true;
                 powerUp.Activated = true;
@@ -418,11 +499,9 @@ void ActivatePowerUp(PowerUp& powerUp)
     }
 }
 
-// powerups
 bool IsOtherPowerUpActive(std::vector<PowerUp>& powerUps, std::string type)
 {
-    // Check if another PowerUp of the same type is still active
-    // in which case we don't disable its effect (yet)
+    //检查特效是否已经激活
     for (const PowerUp& powerUp : powerUps)
     {
         if (powerUp.Activated)
@@ -442,13 +521,12 @@ void Game::UpdatePowerUps(float dt)
 
             if (powerUp.Duration <= 0.0f)
             {
-                // remove powerup from list (will later be removed)
                 powerUp.Activated = false;
-                // deactivate effects
+                // 解除特效影响
                 if (powerUp.Type == "sticky")
                 {
                     if (!IsOtherPowerUpActive(this->PowerUps, "sticky"))
-                    {	// only reset if no other PowerUp of type sticky is active
+                    {
                         Ball->Sticky = false;
                         Player->Color = glm::vec3(1.0f);
                     }
@@ -456,7 +534,7 @@ void Game::UpdatePowerUps(float dt)
                 else if (powerUp.Type == "pass-through")
                 {
                     if (!IsOtherPowerUpActive(this->PowerUps, "pass-through"))
-                    {	// only reset if no other PowerUp of type pass-through is active
+                    {
                         Ball->PassThrough = false;
                         Ball->Color = glm::vec3(1.0f);
                     }
@@ -464,22 +542,22 @@ void Game::UpdatePowerUps(float dt)
                 else if (powerUp.Type == "confuse")
                 {
                     if (!IsOtherPowerUpActive(this->PowerUps, "confuse"))
-                    {	// only reset if no other PowerUp of type confuse is active
+                    {
                         Effects->Confuse = false;
                     }
                 }
                 else if (powerUp.Type == "chaos")
                 {
                     if (!IsOtherPowerUpActive(this->PowerUps, "chaos"))
-                    {	// only reset if no other PowerUp of type chaos is active
+                    {
                         Effects->Chaos = false;
                     }
                 }
             }
         }
     }
-    // Remove all PowerUps from vector that are destroyed AND !activated (thus either off the map or finished)
-    // Note we use a lambda expression to remove each PowerUp which is destroyed and not activated
+
+    //移除所有特效状态
     this->PowerUps.erase(std::remove_if(this->PowerUps.begin(), this->PowerUps.end(),
         [](const PowerUp& powerUp) { return powerUp.Destroyed && !powerUp.Activated; }
     ), this->PowerUps.end());
@@ -519,4 +597,31 @@ void Game::SpawnPowerUps(GameObject& block)
         this->PowerUps.push_back(PowerUp("chaos", glm::vec3(0.9f, 0.25f, 0.25f), 15.0f, block.Position, ResourceManager::GetTexture("powerup_chaos")));
         return;
     }
+}
+
+void Game::ResetLevel()
+{
+    if (this->Level == 0)
+        this->Levels[0].Load("levels/one.lvl", this->Width, this->Height / 2);
+    else if (this->Level == 1)
+        this->Levels[1].Load("levels/two.lvl", this->Width, this->Height / 2);
+    else if (this->Level == 2)
+        this->Levels[2].Load("levels/three.lvl", this->Width, this->Height / 2);
+    else if (this->Level == 3)
+        this->Levels[3].Load("levels/four.lvl", this->Width, this->Height / 2);
+
+    this->Lives = 3;
+}
+
+void Game::ResetPlayer()
+{
+    // 重置小球及挡板位置
+    Player->Size = PLAYER_SIZE;
+    Player->Position = glm::vec2(this->Width / 2.0f - PLAYER_SIZE.x / 2.0f, this->Height - PLAYER_SIZE.y);
+    Ball->Reset(Player->Position + glm::vec2(PLAYER_SIZE.x / 2.0f - BALL_RADIUS, -(BALL_RADIUS * 2.0f)), INITIAL_BALL_VELOCITY);
+    // 重置特效、颜色、穿越状态
+    Effects->Chaos = Effects->Confuse = false;
+    Ball->PassThrough = Ball->Sticky = false;
+    Player->Color = glm::vec3(1.0f);
+    Ball->Color = glm::vec3(1.0f);
 }

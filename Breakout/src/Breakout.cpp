@@ -28,8 +28,7 @@ int main(int argc, char* argv[])
     GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Breakout", nullptr, nullptr);
     glfwMakeContextCurrent(window);
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
+    // glad: 加载所有openGL 函数指针
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -39,40 +38,33 @@ int main(int argc, char* argv[])
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // OpenGL configuration
-    // --------------------
+    // 应用级OpenGL 配置
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // initialize game
-    // ---------------
+    // 游戏初始化
     Breakout.Init();
 
-    // deltaTime variables
-    // -------------------
+    // 用于管理和计算时间差（deltaTime），以便更新游戏内部对象状态
     float deltaTime = 0.0f;
-    float lastFrame = 0.0f;
+    float lastFrame = 0.0f;//用于记录上一次渲染帧的时间（通常是一个时间戳，单位为秒）。在每次渲染新帧时，可以通过比较当前时间和 lastFrame 的值来计算 deltaTime
 
     while (!glfwWindowShouldClose(window))
     {
-        // calculate delta time
-        // --------------------
+        // 时差计算
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         glfwPollEvents();
 
-        // manage user input
-        // -----------------
+        // 处理用户键盘输入
         Breakout.ProcessInput(deltaTime);
 
-        // update game state
-        // -----------------
+        // 根据时间差更新游戏内部状态
         Breakout.Update(deltaTime);
 
-        // render
-        // ------
+        // 渲染
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         Breakout.Render();
@@ -80,8 +72,7 @@ int main(int argc, char* argv[])
         glfwSwapBuffers(window);
     }
 
-    // delete all resources as loaded using the resource manager
-    // ---------------------------------------------------------
+    // 资源清理
     ResourceManager::Clear();
 
     glfwTerminate();
@@ -90,9 +81,20 @@ int main(int argc, char* argv[])
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-    // when a user presses the escape key, we set the WindowShouldClose property to true, closing the application
+    // 键盘案件事件处理
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if (key >= 0 && key < 1024)
+    {
+        if (action == GLFW_PRESS)
+            Breakout.Keys[key] = true;
+        else if (action == GLFW_RELEASE)
+        {
+            Breakout.Keys[key] = false;
+            Breakout.KeysProcessed[key] = false;
+        }
+    }
+
     if (key >= 0 && key < 1024)
     {
         if (action == GLFW_PRESS)

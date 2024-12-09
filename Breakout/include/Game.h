@@ -28,6 +28,7 @@ public:
     ~Game();
 
     // 游戏状态
+    unsigned int Lives;
     GameState  State;
     bool  Keys[1024];
     bool  KeysProcessed[1024];
@@ -39,6 +40,9 @@ public:
     std::vector<PowerUp>  PowerUps;
     void SpawnPowerUps(GameObject& block);
     void UpdatePowerUps(float dt);
+
+    void ResetLevel();
+    void ResetPlayer();
 
     // 初始化游戏状态（加载所有的着色器/纹理/关卡）
     void Init();

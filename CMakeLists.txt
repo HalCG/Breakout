@@ -17,6 +17,7 @@ find_package(GLFW3 REQUIRED)
 
 # 添加库搜索路径  
 link_directories(${CMAKE_SOURCE_DIR}/modules/irrKlang-64bit-1.6.0/lib/Winx64-visualStudio)
+link_directories(${CMAKE_SOURCE_DIR}/modules/freetype-windows-binaries-2.13.3/release\ dll/win64)#空格需要转义，或者整体用引号，否则cmake认为是两个字符串（路径）
 
 # 添加自定义库 
 add_library(glad ${CMAKE_SOURCE_DIR}/modules/glad4.6/src/glad.c)
@@ -28,6 +29,7 @@ include_directories(${CMAKE_SOURCE_DIR}/modules/glad4.6/include)
 include_directories(${CMAKE_SOURCE_DIR}/modules/stb_image)
 include_directories(${CMAKE_SOURCE_DIR}/modules/glm-1.0.1)
 include_directories(${CMAKE_SOURCE_DIR}/modules/irrKlang-64bit-1.6.0/include)
+include_directories(${CMAKE_SOURCE_DIR}/modules/freetype-windows-binaries-2.13.3/include)
 
 # 包含子项目。
 add_subdirectory ("Breakout")
